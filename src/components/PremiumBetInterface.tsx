@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import PremiumBetSection from '@/components/PremiumBetSection';
 import { PremiumCard, PremiumPriceDisplay } from '@/components/PremiumUI';
 import { TokenIcon } from '@/components/TokenIcon';
@@ -16,6 +17,7 @@ export function PremiumBetInterface({
   isCreatingBet, 
   isOracleDown 
 }: PremiumBetInterfaceProps) {
+  const { connected } = useWallet();
   const [betAmount, setBetAmount] = useState('');
 
   const handleDirectionSelect = (direction: 'up' | 'down') => {
@@ -63,8 +65,21 @@ export function PremiumBetInterface({
         onAmountChange={setBetAmount}
         onDirectionSelect={handleDirectionSelect}
         maxAmount={100}
-        disabled={isCreatingBet || isOracleDown}
+        disabled={isCreatingBet || isOracleDown || !connected}
       />
+
+      {/* Wallet Connection Prompt */}
+      {!connected && (
+        <PremiumCard className="p-6 border-yellow-500/50 bg-yellow-500/10">
+          <div className="flex items-center gap-4">
+            <div className="text-3xl">🔥</div>
+            <div>
+              <div className="text-yellow-400 font-semibold text-lg">Connect Wallet to Bet</div>
+              <div className="text-yellow-400 text-sm opacity-80">Connect your Solana wallet to start flipping</div>
+            </div>
+          </div>
+        </PremiumCard>
+      )}
 
       {/* Oracle Warning */}
       {isOracleDown && (

@@ -167,15 +167,40 @@ function PremiumFlipPageContent() {
     }
   };
 
+  // Show interface even when not connected, but with connect wallet prompt
   if (!connected) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center">
+      <div className="min-h-screen relative">
         <PremiumHeader />
-        <div className="glass-premium rounded-2xl p-8 max-w-md mx-auto text-center">
-          <div className="text-6xl mb-6">🔥</div>
-          <h2 className="text-2xl font-bold text-white mb-4">Connect Your Wallet</h2>
-          <p className="text-gray-400 mb-6">Please connect your Solana wallet to start flipping</p>
-          <div className="text-sm text-purple-400">⚡ Instant connection • 🔒 Secure • 🎮 Ready to play</div>
+        <div className="container mx-auto px-4 py-8">
+          {/* Show the coin info even when not connected */}
+          {selectedCoin && (
+            <div className="max-w-4xl mx-auto mb-8">
+              <div className="glass-premium rounded-2xl p-6 mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-2xl font-bold">
+                    {selectedCoin.symbol.slice(0, 2)}
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-white">{selectedCoin.name}</h1>
+                    <p className="text-purple-400 font-semibold">{selectedCoin.symbol}</p>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <div className="text-2xl font-bold text-white">${currentPrice.toFixed(4)}</div>
+                    <div className="text-green-400 text-sm">Live Price</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Connect Wallet Prompt */}
+              <div className="glass-premium border-yellow-500/30 bg-yellow-500/10 rounded-2xl p-8 text-center mb-8">
+                <div className="text-6xl mb-4">🔥</div>
+                <h2 className="text-2xl font-bold text-white mb-4">Connect Your Wallet to Flip</h2>
+                <p className="text-gray-400 mb-6">Connect your Solana wallet to start betting on {selectedCoin.symbol}</p>
+                <div className="text-sm text-yellow-400">⚡ Instant connection • 🔒 Secure • 🎮 Ready to play</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -1,6 +1,9 @@
 export const CONFIG = {
-  // House wallet for fee collection
-  HOUSE_WALLET: 'B1vUK75FH7cBVJwtEs8KZr7d3MCUN2nTH9RdibFf1dfR',
+  // House wallet for fee collection - YOUR MAINNET HOUSE WALLET
+  HOUSE_WALLET: '9KneeNw3nswTjcuj4TCamhPZm1iYhM12VkMHfpWhGox4',
+  
+  // Owner wallet for fee collection - YOUR MAINNET OWNER WALLET  
+  OWNER_WALLET: '3MShrq28H3GeyGxzZfQ3AgZBMspd4Me6FgPsMPB9hfGJ',
   
   // Game settings
   MIN_BET: 0.1, // SOL
@@ -20,12 +23,12 @@ export const CONFIG = {
   JUPITER_TOKEN_API: 'https://tokens.jup.ag/tokens',
   
   // Development mode - use mock data when Jupiter API fails
-  USE_MOCK_DATA_IN_DEV: true, // Set to false to test with real Jupiter API
+  USE_MOCK_DATA_IN_DEV: false, // Set to false for production with real data
   
   // Solana - Multiple RPC endpoints for reliability
-  // Using devnet for testing with fake SOL
-  SOLANA_RPC: 'https://api.devnet.solana.com',
-  FALLBACK_RPC: 'https://rpc-devnet.helius.xyz/?api-key=default', // Alternative devnet RPC
+  // Using mainnet for production with real SOL
+  SOLANA_RPC: 'https://api.mainnet-beta.solana.com',
+  FALLBACK_RPC: 'https://rpc.helius.xyz/?api-key=default', // Alternative mainnet RPC
   
   // UI
   COUNTDOWN_REFRESH_INTERVAL: 1000, // 1 second

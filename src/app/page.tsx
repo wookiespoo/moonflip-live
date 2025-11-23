@@ -45,11 +45,9 @@ export default function PremiumHomePage() {
 
   const handleCoinSelect = (coin: JupiterToken) => {
     setSelectedCoin(coin);
-    if (connected) {
-      // Pass the full coin data as JSON in the URL
-      const coinData = encodeURIComponent(JSON.stringify(coin));
-      router.push(`/flip?coin=${coinData}`);
-    }
+    // Always navigate to flip page, wallet connection will be handled there
+    const coinData = encodeURIComponent(JSON.stringify(coin));
+    router.push(`/flip?coin=${coinData}`);
   };
 
   return (
@@ -103,13 +101,7 @@ export default function PremiumHomePage() {
             </div>
           )}
 
-          {/* Devnet Notice */}
-          <div className="glass-premium rounded-2xl p-4 max-w-lg mx-auto mb-12">
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-purple-400 text-xl">🧪</span>
-              <span className="text-purple-400 font-semibold">Testing on Devnet - No real money involved</span>
-            </div>
-          </div>
+
 
           {/* Oracle Warning */}
           {isOracleDown && (
