@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: 'MoonFlip.live - 60-Second Memecoin Flips',
   description: 'Bet on Solana memecoin price direction in 60 seconds. Instant 1.90x payouts.',
   keywords: 'solana, memecoin, gambling, crypto, flip, moonflip',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   openGraph: {
     title: 'MoonFlip.live - 60-Second Memecoin Flips',
     description: 'Bet on Solana memecoin price direction in 60 seconds. Instant 1.90x payouts.',
