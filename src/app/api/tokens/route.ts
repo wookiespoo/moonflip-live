@@ -112,4 +112,6 @@ export async function GET(request: NextRequest) {
 }
 
 // Revalidate every hour (Next.js 13+ feature)
+// Export config for Next.js
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;

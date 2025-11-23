@@ -13,12 +13,22 @@ export default function PremiumHomePage() {
   const router = useRouter();
   const { connected } = useWallet();
   const [memecoins, setMemecoins] = useState<JupiterToken[]>([]);
+  const [newestCoins, setNewestCoins] = useState<JupiterToken[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCoin, setSelectedCoin] = useState<JupiterToken | null>(null);
   const [isOracleDown, setIsOracleDown] = useState(false);
+  const [activeTab, setActiveTab] = useState<'trending' | 'new'>('trending');
 
   useEffect(() => {
     loadMemecoins();
+    
+    // Auto-refresh tokens every 3 minutes (like pump.fun)
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refreshing tokens...');
+      loadMemecoins();
+    }, 3 * 60 * 1000); // 3 minutes
+    
+    return () => clearInterval(interval);
   }, []);
 
   const loadMemecoins = async () => {
@@ -29,8 +39,15 @@ export default function PremiumHomePage() {
       const oracleDown = jupiterService.isOracleDownStatus();
       setIsOracleDown(oracleDown);
       
-      const coins = await jupiterService.getTopMemecoins(12);
-      setMemecoins(coins);
+      // Load trending memecoins
+      const trendingCoins = await jupiterService.getTopMemecoins(12);
+      setMemecoins(trendingCoins);
+      
+      // Load newest trending coins (like pump.fun)
+      const newCoins = await jupiterService.getNewestTrendingTokens(12);
+      setNewestCoins(newCoins);
+      
+      console.log(`✅ Loaded ${trendingCoins.length} trending coins and ${newCoins.length} newest coins`);
     } catch (error) {
       console.error('Error loading memecoins:', error);
       
@@ -128,6 +145,32 @@ export default function PremiumHomePage() {
             <p className="text-gray-400 text-lg">Select a coin to flip. Prices update in real-time.</p>
           </div>
 
+          {/* Tab Navigation - Like Pump.fun */}
+          <div className="flex justify-center mb-8">
+            <div className="glass-premium rounded-2xl p-2 flex">
+              <button
+                onClick={() => setActiveTab('trending')}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                  activeTab === 'trending'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                🔥 Trending
+              </button>
+              <button
+                onClick={() => setActiveTab('new')}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                  activeTab === 'new'
+                    ? 'bg-green-600 text-white shadow-lg shadow-green-600/30'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                ✨ New & Hot
+              </button>
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
@@ -148,16 +191,39 @@ export default function PremiumHomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {memecoins.map((coin) => (
-                <PremiumCoinCard
-                  key={coin.address}
-                  coin={coin}
-                  onSelect={() => handleCoinSelect(coin)}
-                  isSelected={selectedCoin?.address === coin.address}
-                />
-              ))}
+              {activeTab === 'trending' 
+                ? memecoins.map((coin) => (
+                    <PremiumCoinCard
+                      key={coin.address}
+                      coin={coin}
+                      onSelect={() => handleCoinSelect(coin)}
+                      isSelected={selectedCoin?.address === coin.address}
+                    />
+                  ))
+                : newestCoins.map((coin) => (
+                    <PremiumCoinCard
+                      key={coin.address}
+                      coin={coin}
+                      onSelect={() => handleCoinSelect(coin)}
+                      isSelected={selectedCoin?.address === coin.address}
+                    />
+                  ))
+              }
             </div>
           )}
+
+          {/* Auto-refresh indicator */}
+          <div className="text-center mt-8">
+            <div className="text-gray-500 text-sm">
+              {activeTab === 'trending' ? '🔥 Trending by volume' : '✨ Newest trending coins'} • 
+              <button 
+                onClick={loadMemecoins}
+                className="text-purple-400 hover:text-purple-300 ml-1"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
