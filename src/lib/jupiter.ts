@@ -172,7 +172,8 @@ export class JupiterPriceService {
         throw new Error(`Token API error: ${response.status}`);
       }
       
-      const allTokens = await response.json();
+      const apiResponse = await response.json();
+      const allTokens = apiResponse.tokens || apiResponse; // Handle both wrapped and direct responses
       console.log(`📊 Fetched ${allTokens.length} REAL tokens from Jupiter`);
       
       // Filter for memecoins and trending tokens
@@ -388,7 +389,8 @@ export class JupiterPriceService {
         throw new Error(`Token API error: ${response.status}`);
       }
       
-      const allTokens = await response.json();
+      const apiResponse = await response.json();
+      const allTokens = apiResponse.tokens || apiResponse; // Handle both wrapped and direct responses
       
       // Filter for very recent activity (last 24h high volume/price change)
       const newestTokens = allTokens.filter((token: any) => {
