@@ -10,6 +10,10 @@
     }
   },
   "env": {
-    "NEXT_PUBLIC_SITE_URL": "https://moonflip.live"
+    "NEXT_PUBLIC_SITE_URL": "https://moonflip.live",
+    "NEXT_PUBLIC_SOLANA_NETWORK": "mainnet-beta",
+    "HOUSE_WALLET_PRIVATE_KEY": "@house-wallet-private-key",
+    "OWNER_WALLET_PRIVATE_KEY": "@owner-wallet-private-key",
+    "NODE_ENV": "production"
   }
 }
