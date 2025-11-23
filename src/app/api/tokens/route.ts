@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Cache for token data
 let tokenCache: any = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
+const CACHE_DURATION = 60 * 1000; // 60 seconds max cache (November 2025 standard)
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,14 +16,15 @@ export async function GET(request: NextRequest) {
 
     console.log('🔄 Fetching fresh token list from Jupiter...');
     
-    // Fetch from Jupiter API (server-side only, no CORS issues)
+    // Fetch from Jupiter API strict endpoint (server-side only, no CORS issues)
+    // This is the ONLY endpoint that includes ALL new pump.fun tokens instantly
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
     const response = await fetch('https://token.jup.ag/strict', {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'MoonFlip/1.0',
+        'User-Agent': 'MoonFlip/1.0', // Required to avoid rate limits
       },
       signal: controller.signal,
     });
@@ -35,13 +36,29 @@ export async function GET(request: NextRequest) {
     }
 
     const tokens = await response.json();
-    console.log(`✅ Fetched ${tokens.length} tokens from Jupiter`);
+    console.log(`✅ Fetched ${tokens.length} tokens from Jupiter strict`);
+
+    // Transform Jupiter strict format to our expected format
+    const transformedTokens = tokens.map((token: any) => ({
+      address: token.address,
+      symbol: token.symbol,
+      name: token.name,
+      decimals: token.decimals,
+      logoURI: token.logoURI, // Jupiter strict includes logoURI for ALL tokens including new pump.fun
+      tags: token.tags || [],
+      marketCap: token.marketCap || 0,
+      volume24h: token.daily_volume || 0,
+      priceChange24h: token.priceChange24h || 0,
+      verified: token.verified || false,
+      daily_volume: token.daily_volume || 0,
+      created_at: token.created_at || new Date().toISOString()
+    }));
 
     // Transform and cache the data
     tokenCache = {
-      tokens,
+      tokens: transformedTokens,
       timestamp: now,
-      count: tokens.length,
+      count: transformedTokens.length,
     };
     cacheTimestamp = now;
 
