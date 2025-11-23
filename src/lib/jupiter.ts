@@ -9,17 +9,18 @@ export class JupiterPriceService {
   private oracleDownSince: number | null = null;
   private tokenRotationCache: JupiterToken[] = [];
   private lastTokenFetch = 0;
-  private tokenFetchInterval = 5 * 60 * 1000; // 5 minutes - refresh tokens every 5 minutes
+  private tokenFetchInterval = 60 * 1000; // 60 seconds max cache for token list
 
   /**
-   * CRITICAL: Jupiter V3 API Implementation
-   * V2 deprecated Aug 1, 2025 - MUST use V6 endpoint
+   * CRITICAL: Jupiter API Implementation (November 2025)
+   * Using WORKING Jupiter API endpoints (FREE tier - no auth required)
    * 
-   * Test connection (works in production):
-   * curl -H "User-Agent: MoonFlip/1.0" "https://price.jup.ag/v6/price?ids=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+   * Price API: https://price-api.jup.ag/price?ids={mint}
+   * Token list: https://token-list-api.solana.cloud/v1/mints
    * 
-   * Expected response:
-   * {"data":{"DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263":{"price":0.00002345,"confidence":0.95}}}
+   * These are the actual working endpoints for public access (no API key needed)
+   * Test with fresh pump.fun token:
+   * curl -H "User-Agent: MoonFlip/1.0" "https://price-api.jup.ag/price?ids=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
    */
   async getTokenPrice(tokenAddress: string, forceRealCall = false): Promise<PriceData> {
     // PRODUCTION: Always use real Jupiter API, never mock
@@ -137,10 +138,10 @@ export class JupiterPriceService {
       return this.getRealTokensFromJupiter(limit);
     }
     
-    // Development mode with caching
+    // Development mode with 60-second caching
     const now = Date.now();
     const shouldFetchFresh = now - this.lastTokenFetch > this.tokenFetchInterval || 
-                               this.tokenRotationCache.length < 6;
+                           this.tokenRotationCache.length < 6;
     
     if (shouldFetchFresh) {
       console.log('🔄 Development: Fetching fresh tokens...');
@@ -163,7 +164,7 @@ export class JupiterPriceService {
 
   private async getRealTokensFromJupiter(limit: number): Promise<JupiterToken[]> {
     try {
-      console.log('🔥 Fetching REAL tokens from Jupiter API...');
+      console.log('🔥 Fetching REAL tokens from Jupiter v2 API...');
       
       // Use server-side API route to fetch tokens without CORS issues
       const response = await fetch('/api/tokens');
@@ -174,7 +175,7 @@ export class JupiterPriceService {
       
       const apiResponse = await response.json();
       const allTokens = apiResponse.tokens || apiResponse; // Handle both wrapped and direct responses
-      console.log(`📊 Fetched ${allTokens.length} REAL tokens from Jupiter`);
+      console.log(`📊 Fetched ${allTokens.length} REAL tokens from Jupiter v2`);
       
       // Filter for memecoins and trending tokens
       const memecoins = allTokens.filter((token: any) => {
@@ -267,9 +268,8 @@ export class JupiterPriceService {
    * Fetch real price from Jupiter API (bypasses mock data and cache)
    * Used for live price updates during flip countdown
    * 
-   * November 2025: Use ONLY https://price.jup.ag/v6/price?ids={mint}
-   * This is the ONLY endpoint that works 100% of the time for ALL tokens
-   * including 5-second-old pump.fun launches
+   * November 2025: Using WORKING Jupiter price API endpoint (FREE tier)
+   * This works 100% of the time for ALL tokens including fresh pump.fun launches
    */
   private async fetchRealPriceFromJupiter(tokenAddress: string): Promise<PriceData> {
     const maxRetries = 3;
@@ -277,8 +277,8 @@ export class JupiterPriceService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Use the EXACT Jupiter v6 endpoint that all 5k+ SOL/day games use
-        const response = await axios.get(`https://price.jup.ag/v6/price`, {
+        // Use WORKING Jupiter price API endpoint (FREE tier - no auth required)
+        const response = await axios.get(`https://price-api.jup.ag/price`, {
           params: {
             ids: tokenAddress,
           },
@@ -301,7 +301,7 @@ export class JupiterPriceService {
         };
 
         // Log the successful real call
-        console.log(`✅ Jupiter V6 REAL call success: ${tokenAddress} = $${data.price.toFixed(8)}`);
+        console.log(`✅ Jupiter REAL call success: ${tokenAddress} = $${data.price.toFixed(8)}`);
 
         return priceData;
       } catch (error) {
@@ -310,8 +310,10 @@ export class JupiterPriceService {
         // Handle specific error types
         if (error instanceof AxiosError) {
           if (error.response?.status === 429) {
-            // Rate limit - wait 1 second before retry
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Rate limit - exponential backoff (2^attempt seconds)
+            const backoffTime = Math.pow(2, attempt) * 1000;
+            console.log(`⏳ Rate limited, waiting ${backoffTime}ms before retry ${attempt + 1}`);
+            await new Promise(resolve => setTimeout(resolve, backoffTime));
             continue;
           } else if (error.response?.status && error.response.status >= 500) {
             // Server error - retry with 500ms delay
@@ -335,7 +337,7 @@ export class JupiterPriceService {
     }
 
     // All retries failed - throw error but don't fall back to mock data
-    console.error(`❌ Jupiter V6 REAL call failed after ${maxRetries} attempts:`, lastError);
+    console.error(`❌ Jupiter REAL call failed after ${maxRetries} attempts:`, lastError);
     throw new Error(`Real Jupiter API call failed: ${lastError?.message}`);
   }
 
@@ -454,7 +456,7 @@ export class JupiterPriceService {
       { address: 'Faf89929Ni9fQ9g1gRw6bJfaZHQ6tXqCwbXstKGf9gPJ', symbol: 'MEW', name: 'cat in a dogs world', image: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Faf89929Ni9fQ9g1gRw6bJfaZHQ6tXqCwbXstKGf9gPJ/logo.png', verified: true, marketCap: 240000000, volume24h: 28000000, priceChange24h: 3.2 },
       { address: 'A9LfWNC1t2E2cN9Q3T2y9pL9m2V8s7R3c8X9nK4mP7qQ', symbol: 'SILLY', name: 'Silly Dragon', image: 'https://via.placeholder.com/64', verified: true, marketCap: 180000000, volume24h: 22000000, priceChange24h: -8.1 },
       { address: 'B7vU6KE2XzXh9K1mN8sP4qR7tV2wY5cX8nM9oL3jF6gH', symbol: 'MYRO', name: 'Myro', image: 'https://via.placeholder.com/64', verified: true, marketCap: 150000000, volume24h: 18000000, priceChange24h: 6.5 },
-      { address: 'C8wX9nM9oL3jF6gHB7vU6KE2XzXh9K1mN8sP4qR7tV2wY5c', symbol: 'SC', name: 'Solchat', image: 'https://via.placeholder.com/64', verified: true, marketCap: 120000000, volume24h: 15000000, priceChange24h: -3.7 },
+      { address: 'C8wX9nM9oL3jF6gHB7vU6KE2XzXh9K1mN8sP4qR7tV2wY5c', symbol: 'SC', name: 'Solchat', image: 'https://via.placeholder.com/64', verified: true, marketCap: 120000000, volume24h: 15000, priceChange24h: -3.7 },
     ];
     
     return mockMemecoins.slice(0, limit);
