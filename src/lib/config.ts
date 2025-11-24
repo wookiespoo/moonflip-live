@@ -18,8 +18,8 @@ export const CONFIG = {
   MAX_BETS_PER_MINUTE: 5,
   MAX_BETS_PER_HOUR: 50,
   
-  // Jupiter API - CRITICAL: Use V3 endpoint (V2 deprecated Aug 1, 2025)
-  JUPITER_PRICE_API: 'https://price.jup.ag/v6',
+  // Jupiter API - V3 (public lite endpoint)
+  JUPITER_PRICE_API: 'https://lite-api.jup.ag',
   JUPITER_TOKEN_API: 'https://tokens.jup.ag/tokens',
   
   // Development mode - use mock data when Jupiter API fails

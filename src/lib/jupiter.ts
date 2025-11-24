@@ -231,7 +231,7 @@ export class JupiterPriceService {
       
       console.log(`🎯 Found ${sortedMemecoins.length} REAL memecoins from Jupiter strict`);
       
-      // Transform to JupiterToken format
+      // Transform to format used by token feed, include createdAt when available
       return sortedMemecoins.map((token: any) => ({
         address: token.address,
         symbol: token.symbol,
@@ -240,7 +240,8 @@ export class JupiterPriceService {
         verified: token.verified || false,
         marketCap: token.marketCap || 0,
         volume24h: token.volume24h || 0,
-        priceChange24h: token.priceChange24h || 0
+        priceChange24h: token.priceChange24h || 0,
+        createdAt: token.created_at || token.createdAt || undefined,
       }));
       
     } catch (error) {
@@ -262,68 +263,81 @@ export class JupiterPriceService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Use WORKING Jupiter V3 price API endpoint (FREE tier - no auth required)
-        const response = await axios.get(`https://price.jup.ag/v3/price`, {
-          params: {
-            ids: tokenAddress,
-          },
+        // Use server proxy to Jupiter Price API V3 (avoids CORS and centralizes version)
+        const resp = await fetch(`/api/jupiter/price?ids=${encodeURIComponent(tokenAddress)}`, {
           headers: {
             'Accept': 'application/json',
-            'User-Agent': 'MoonFlip/1.0', // Required to avoid rate limits
+            'User-Agent': 'MoonFlip/1.0',
           },
-          timeout: 5000, // 5 second timeout
         });
 
-        const data = response.data.data[tokenAddress];
-        if (!data) {
-          throw new Error(`Token ${tokenAddress} not found in V3 API`);
+        if (!resp.ok) {
+          throw new Error(`Proxy error: ${resp.status}`);
         }
 
+        const body = await resp.json();
+        // V3 lite API shape: { [mint]: { usdPrice, blockId, decimals, priceChange24h } }
+        const entry = body?.[tokenAddress] || body?.data?.[tokenAddress];
+        if (!entry) {
+          throw new Error(`Token ${tokenAddress} not found in price response`);
+        }
+
+        const price = entry.usdPrice ?? entry.price;
+        const confidence = entry.confidence ?? 0.95;
+
         const priceData: PriceData = {
-          price: data.price,
+          price,
           timestamp: Date.now(),
-          confidence: data.confidence || 0.95,
+          confidence,
         };
 
-        // Log the successful real V3 call
-        console.log(`✅ Jupiter V3 REAL call success: ${tokenAddress} = $${data.price.toFixed(8)}`);
-
+        console.log(`✅ Jupiter V3 price: ${tokenAddress} = $${(price ?? 0).toFixed(8)}`);
         return priceData;
       } catch (error) {
         lastError = error as Error;
-        
-        // Handle specific error types
-        if (error instanceof AxiosError) {
-          if (error.response?.status === 429) {
-            // Rate limit - exponential backoff (2^attempt seconds)
-            const backoffTime = Math.pow(2, attempt) * 1000;
-            console.log(`⏳ V3 Rate limited, waiting ${backoffTime}ms before retry ${attempt + 1}`);
-            await new Promise(resolve => setTimeout(resolve, backoffTime));
-            continue;
-          } else if (error.response?.status && error.response.status >= 500) {
-            // Server error - retry with 500ms delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-            continue;
-          } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-            // Network connectivity issues
-            console.warn(`Network issue on V3 attempt ${attempt}: ${error.code}`);
-            if (attempt < maxRetries) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              continue;
-            }
-          }
-        }
-
-        // For other errors, don't retry immediately
         if (attempt < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
     }
 
-    // All retries failed - throw error but don't fall back to mock data
-    console.error(`❌ Jupiter V3 REAL call failed after ${maxRetries} attempts:`, lastError);
+    console.error(`❌ Jupiter V3 price failed after ${maxRetries} attempts:`, lastError);
     throw new Error(`Real Jupiter V3 API call failed: ${lastError?.message}`);
+  }
+
+  async getBatchPrices(tokenAddresses: string[]): Promise<Map<string, PriceData>> {
+    const result = new Map<string, PriceData>();
+    if (!tokenAddresses.length) return result;
+
+    try {
+      const ids = tokenAddresses.join(',');
+      const resp = await fetch(`/api/jupiter/price?ids=${encodeURIComponent(ids)}`, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'MoonFlip/1.0',
+        },
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Proxy error: ${resp.status}`);
+      }
+
+      const body = await resp.json();
+
+      tokenAddresses.forEach((addr) => {
+        const entry = body?.[addr] || body?.data?.[addr];
+        if (entry) {
+          const price = entry.usdPrice ?? entry.price;
+          const confidence = entry.confidence ?? 0.95;
+          result.set(addr, { price, timestamp: Date.now(), confidence });
+        }
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Batch price fetch failed:', error);
+      return result;
+    }
   }
 
   /**

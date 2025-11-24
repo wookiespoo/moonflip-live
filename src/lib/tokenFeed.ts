@@ -135,12 +135,22 @@ class TokenFeedService {
    * Transform Jupiter tokens to CombinedToken format
    */
   private async transformJupiterToCombined(jupiterTokens: JupiterToken[]): Promise<CombinedToken[]> {
-    return jupiterTokens.map(token => ({
-      ...token,
-      isNewLaunch: false, // Jupiter tokens are established
-      ageHours: 24, // Assume older tokens from Jupiter
-      liquidity: token.volume24h, // Use volume as liquidity proxy
-    }));
+    return jupiterTokens.map((token: any) => {
+      let ageHours: number | undefined = undefined;
+      if (token.createdAt) {
+        const created = new Date(token.createdAt).getTime();
+        const diffMs = Date.now() - created;
+        ageHours = Math.max(0, diffMs / (1000 * 60 * 60));
+      }
+
+      return {
+        ...token,
+        isNewLaunch: false,
+        ageHours: ageHours !== undefined ? ageHours : 24,
+        liquidity: token.volume24h,
+        createdAt: token.createdAt,
+      };
+    });
   }
 
   /**

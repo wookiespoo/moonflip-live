@@ -46,11 +46,26 @@ export default function PremiumHomePage() {
         limit: 12,
         sortBy: 'volume'
       });
-      setTrendingTokens(trending);
+      // Merge live prices into trending tokens
+      const trendingAddresses = trending.map(t => (t as any).address || (t as any).mintAddress).filter(Boolean);
+      const trendingPrices = await jupiterService.getBatchPrices(trendingAddresses);
+      const trendingWithPrices = trending.map(t => {
+        const addr = (t as any).address || (t as any).mintAddress;
+        const p = addr ? trendingPrices.get(addr) : undefined;
+        return { ...t, price: p?.price ?? 0 } as any;
+      });
+      setTrendingTokens(trendingWithPrices as any);
       
       // Load new tokens (Pump.fun new launches)
-      const newTokens = await tokenFeedService.getTrendingTokens(12);
-      setNewTokens(newTokens);
+      const newTokensList = await tokenFeedService.getTrendingTokens(12);
+      const newAddresses = newTokensList.map(t => (t as any).address || (t as any).mintAddress).filter(Boolean);
+      const newPrices = await jupiterService.getBatchPrices(newAddresses);
+      const newWithPrices = newTokensList.map(t => {
+        const addr = (t as any).address || (t as any).mintAddress;
+        const p = addr ? newPrices.get(addr) : undefined;
+        return { ...t, price: p?.price ?? 0 } as any;
+      });
+      setNewTokens(newWithPrices as any);
       
       console.log(`✅ Loaded ${trending.length} trending tokens and ${newTokens.length} new tokens`);
     } catch (error) {

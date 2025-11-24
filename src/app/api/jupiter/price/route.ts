@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Forward request to Jupiter API with proper headers
-    const response = await fetch(`${CONFIG.JUPITER_PRICE_API}/price?ids=${ids}`, {
+    // Forward request to Jupiter Price API V3 (public lite endpoint)
+    const response = await fetch(`${CONFIG.JUPITER_PRICE_API}/price/v3?ids=${ids}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
