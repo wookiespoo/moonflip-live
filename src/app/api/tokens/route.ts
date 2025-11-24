@@ -16,12 +16,12 @@ export async function GET(request: NextRequest) {
 
     console.log('🔄 Fetching fresh token list from Jupiter API...');
     
-    // Fetch from Jupiter tokens endpoint (server-side only, no CORS issues)
-    // This endpoint includes ALL new pump.fun tokens instantly
+    // Fetch from Jupiter V3 API endpoint (server-side only, no CORS issues)
+    // Using the working Jupiter V3 tokens endpoint
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
-    const response = await fetch('https://tokens.jup.ag/tokens', {
+    const response = await fetch('https://lite-api.jup.ag/tokens/v2/recent', {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'MoonFlip/1.0', // Required to avoid rate limits
@@ -35,19 +35,20 @@ export async function GET(request: NextRequest) {
       throw new Error(`Jupiter API error: ${response.status} ${response.statusText}`);
     }
 
-    const tokens = await response.json();
-    console.log(`✅ Fetched ${tokens.length} tokens from Jupiter tokens`);
+    const data = await response.json();
+    const tokens = data.tokens || data; // Handle both wrapped and direct responses
+    console.log(`✅ Fetched ${tokens.length} tokens from Jupiter V3 API`);
 
-    // Transform Jupiter strict format to our expected format
+    // Transform Jupiter V3 format to our expected format
     const transformedTokens = tokens.map((token: any) => ({
-      address: token.address || token.id,
+      address: token.address || token.id || token.mint,
       symbol: token.symbol,
       name: token.name,
       decimals: token.decimals,
-      logoURI: token.logoURI || token.logoUri || token.icon, // Handle multiple logo field names
+      logoURI: token.logoURI || token.logoUri || token.icon || token.image, // Handle multiple logo field names
       tags: token.tags || [],
       marketCap: token.marketCap || token.mcap || 0,
-      volume24h: token.volume24h || token.stats24h?.volume || 0,
+      volume24h: token.volume24h || token.stats24h?.volume || token.daily_volume || 0,
       priceChange24h: token.priceChange24h || token.stats24h?.priceChange || 0,
       verified: token.verified || token.isVerified || token.tags?.includes('verified') || false,
       daily_volume: token.daily_volume || 0,
