@@ -70,10 +70,11 @@ export function PremiumHeader() {
   );
 }
 
-export function PremiumCoinCard({ coin, onSelect, isSelected }: {
+export function PremiumCoinCard({ coin, onSelect, isSelected, ageDisplay }: {
   coin: any;
   onSelect: () => void;
   isSelected: boolean;
+  ageDisplay?: string;
 }) {
   return (
     <div 
@@ -93,7 +94,7 @@ export function PremiumCoinCard({ coin, onSelect, isSelected }: {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <TokenIcon 
-              mint={coin.mintAddress}
+              mint={coin.mintAddress || coin.address}
               symbol={coin.symbol}
               size={48}
               priceChange24h={coin.priceChange24h}
@@ -102,6 +103,9 @@ export function PremiumCoinCard({ coin, onSelect, isSelected }: {
             <div>
               <h3 className="font-bold text-white">{coin.symbol}</h3>
               <p className="text-gray-400 text-sm">{coin.name}</p>
+              {ageDisplay && (
+                <p className="text-green-400 text-xs font-semibold">{ageDisplay}</p>
+              )}
             </div>
           </div>
           <div className="text-right">
@@ -122,6 +126,12 @@ export function PremiumCoinCard({ coin, onSelect, isSelected }: {
             <span className="text-gray-400">24h Volume</span>
             <span className="text-white font-semibold">${((coin.volume24h ?? 0) / 1000000).toFixed(1)}M</span>
           </div>
+          {coin.liquidity && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Liquidity</span>
+              <span className="text-white font-semibold">${((coin.liquidity ?? 0) / 1000).toFixed(0)}K</span>
+            </div>
+          )}
         </div>
 
         {/* Premium selection indicator */}

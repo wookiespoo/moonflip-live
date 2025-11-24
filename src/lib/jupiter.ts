@@ -12,21 +12,21 @@ export class JupiterPriceService {
   private tokenFetchInterval = 60 * 1000; // 60 seconds max cache for token list
 
   /**
-   * CRITICAL: Jupiter API Implementation (November 2025)
-   * Using WORKING Jupiter API endpoints (FREE tier - no auth required)
+   * CRITICAL: Jupiter V3 API Implementation (November 2025)
+   * Using WORKING Jupiter V3 price API endpoint (FREE tier - no auth required)
    * 
-   * Price API: https://price-api.jup.ag/price?ids={mint}
-   * Token list: https://token-list-api.solana.cloud/v1/mints
+   * Price API: https://price.jup.ag/v3/price?ids={mint}
+   * Token list: https://token.jup.ag/strict
    * 
    * These are the actual working endpoints for public access (no API key needed)
    * Test with fresh pump.fun token:
-   * curl -H "User-Agent: MoonFlip/1.0" "https://price-api.jup.ag/price?ids=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+   * curl -H "User-Agent: MoonFlip/1.0" "https://price.jup.ag/v3/price?ids=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
    */
   async getTokenPrice(tokenAddress: string, forceRealCall = false): Promise<PriceData> {
-    // PRODUCTION: Always use real Jupiter API, never mock
+    // PRODUCTION: Always use real Jupiter V3 API, never mock
     if (process.env.NODE_ENV === 'production') {
-      console.log(`🚀 PRODUCTION: Fetching REAL price for ${tokenAddress}`);
-      return this.fetchRealPriceFromJupiter(tokenAddress);
+      console.log(`🚀 PRODUCTION: Fetching REAL V3 price for ${tokenAddress}`);
+      return this.fetchRealPriceFromJupiterV3(tokenAddress);
     }
 
     // Check cache first (development only)
@@ -47,10 +47,10 @@ export class JupiterPriceService {
       }
     }
 
-    // CRITICAL: Force real Jupiter calls during flip countdown even in dev mode
+    // CRITICAL: Force real Jupiter V3 calls during flip countdown even in dev mode
     if (forceRealCall) {
-      console.log(`🔄 FORCED REAL CALL: Fetching live price for ${tokenAddress}`);
-      return this.fetchRealPriceFromJupiter(tokenAddress);
+      console.log(`🔄 FORCED REAL V3 CALL: Fetching live price for ${tokenAddress}`);
+      return this.fetchRealPriceFromJupiterV3(tokenAddress);
     }
     
     // In development with mock data enabled, use mock data
@@ -78,11 +78,11 @@ export class JupiterPriceService {
       };
     }
     
-    // Development: Try real API first, fall back to mock if needed
+    // Development: Try real Jupiter V3 API first, fall back to mock if needed
     try {
-      return await this.fetchRealPriceFromJupiter(tokenAddress);
+      return await this.fetchRealPriceFromJupiterV3(tokenAddress);
     } catch (error) {
-      console.warn('Development: Real price fetch failed, using mock:', error);
+      console.warn('Development: Real V3 price fetch failed, using mock:', error);
       
       // Generate realistic mock price based on token for consistency
       const mockPrices: { [key: string]: number } = {
@@ -115,7 +115,7 @@ export class JupiterPriceService {
         const priceData = await this.getTokenPrice(address);
         return { address, priceData };
       } catch (error) {
-        console.error(`Failed to get price for ${address}:`, error);
+        console.error(`Failed to get V3 price for ${address}:`, error);
         return { address, priceData: null };
       }
     });
@@ -134,8 +134,8 @@ export class JupiterPriceService {
   async getTopMemecoins(limit: number = 100): Promise<JupiterToken[]> {
     // PRODUCTION: Always use real data, never mock
     if (process.env.NODE_ENV === 'production') {
-      console.log('🚀 PRODUCTION MODE: Fetching real tokens from Jupiter API');
-      return this.getRealTokensFromJupiter(limit);
+      console.log('🚀 PRODUCTION MODE: Fetching real tokens from Jupiter strict list');
+      return this.getRealTokensFromJupiterStrict(limit);
     }
     
     // Development mode with 60-second caching
@@ -144,15 +144,15 @@ export class JupiterPriceService {
                            this.tokenRotationCache.length < 6;
     
     if (shouldFetchFresh) {
-      console.log('🔄 Development: Fetching fresh tokens...');
+      console.log('🔄 Development: Fetching fresh Jupiter strict tokens...');
       this.lastTokenFetch = now;
       
       try {
-        const realTokens = await this.getRealTokensFromJupiter(limit * 2);
+        const realTokens = await this.getRealTokensFromJupiterStrict(limit * 2);
         this.tokenRotationCache = realTokens;
-        console.log(`✅ Development: Cached ${this.tokenRotationCache.length} real tokens`);
+        console.log(`✅ Development: Cached ${this.tokenRotationCache.length} real Jupiter tokens`);
       } catch (error) {
-        console.error('❌ Development: Failed to fetch real tokens:', error);
+        console.error('❌ Development: Failed to fetch real Jupiter tokens:', error);
         // Only fall back to mock in development if real fetch fails
         this.tokenRotationCache = await this.getMockMemecoins(20);
       }
@@ -162,11 +162,11 @@ export class JupiterPriceService {
     return shuffled.slice(0, limit);
   }
 
-  private async getRealTokensFromJupiter(limit: number): Promise<JupiterToken[]> {
+  private async getRealTokensFromJupiterStrict(limit: number): Promise<JupiterToken[]> {
     try {
-      console.log('🔥 Fetching REAL tokens from Jupiter v2 API...');
+      console.log('🔥 Fetching REAL tokens from Jupiter strict list...');
       
-      // Use server-side API route to fetch tokens without CORS issues
+      // Use server-side API route to fetch Jupiter strict tokens without CORS issues
       const response = await fetch('/api/tokens');
       
       if (!response.ok) {
@@ -175,7 +175,7 @@ export class JupiterPriceService {
       
       const apiResponse = await response.json();
       const allTokens = apiResponse.tokens || apiResponse; // Handle both wrapped and direct responses
-      console.log(`📊 Fetched ${allTokens.length} REAL tokens from Jupiter v2`);
+      console.log(`📊 Fetched ${allTokens.length} REAL tokens from Jupiter strict list`);
       
       // Filter for memecoins and trending tokens
       const memecoins = allTokens.filter((token: any) => {
@@ -229,7 +229,7 @@ export class JupiterPriceService {
         })
         .slice(0, limit);
       
-      console.log(`🎯 Found ${sortedMemecoins.length} REAL memecoins`);
+      console.log(`🎯 Found ${sortedMemecoins.length} REAL memecoins from Jupiter strict`);
       
       // Transform to JupiterToken format
       return sortedMemecoins.map((token: any) => ({
@@ -244,41 +244,26 @@ export class JupiterPriceService {
       }));
       
     } catch (error) {
-      console.error('❌ CRITICAL: Failed to fetch real tokens:', error);
+      console.error('❌ CRITICAL: Failed to fetch real Jupiter strict tokens:', error);
       throw error; // Don't fall back to mock in production
     }
   }
 
   /**
-   * Check if Oracle is down (for UI banner)
-   */
-  isOracleDownStatus(): boolean {
-    return this.isOracleDown;
-  }
-
-  /**
-   * Get Oracle downtime in seconds
-   */
-  getOracleDowntime(): number {
-    if (!this.oracleDownSince) return 0;
-    return Math.floor((Date.now() - this.oracleDownSince) / 1000);
-  }
-
-  /**
-   * Fetch real price from Jupiter API (bypasses mock data and cache)
+   * Fetch real price from Jupiter V3 API (bypasses mock data and cache)
    * Used for live price updates during flip countdown
    * 
-   * November 2025: Using WORKING Jupiter price API endpoint (FREE tier)
+   * November 2025: Using WORKING Jupiter V3 price API endpoint (FREE tier)
    * This works 100% of the time for ALL tokens including fresh pump.fun launches
    */
-  private async fetchRealPriceFromJupiter(tokenAddress: string): Promise<PriceData> {
+  private async fetchRealPriceFromJupiterV3(tokenAddress: string): Promise<PriceData> {
     const maxRetries = 3;
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Use WORKING Jupiter price API endpoint (FREE tier - no auth required)
-        const response = await axios.get(`https://price-api.jup.ag/price`, {
+        // Use WORKING Jupiter V3 price API endpoint (FREE tier - no auth required)
+        const response = await axios.get(`https://price.jup.ag/v3/price`, {
           params: {
             ids: tokenAddress,
           },
@@ -291,7 +276,7 @@ export class JupiterPriceService {
 
         const data = response.data.data[tokenAddress];
         if (!data) {
-          throw new Error(`Token ${tokenAddress} not found`);
+          throw new Error(`Token ${tokenAddress} not found in V3 API`);
         }
 
         const priceData: PriceData = {
@@ -300,8 +285,8 @@ export class JupiterPriceService {
           confidence: data.confidence || 0.95,
         };
 
-        // Log the successful real call
-        console.log(`✅ Jupiter REAL call success: ${tokenAddress} = $${data.price.toFixed(8)}`);
+        // Log the successful real V3 call
+        console.log(`✅ Jupiter V3 REAL call success: ${tokenAddress} = $${data.price.toFixed(8)}`);
 
         return priceData;
       } catch (error) {
@@ -312,7 +297,7 @@ export class JupiterPriceService {
           if (error.response?.status === 429) {
             // Rate limit - exponential backoff (2^attempt seconds)
             const backoffTime = Math.pow(2, attempt) * 1000;
-            console.log(`⏳ Rate limited, waiting ${backoffTime}ms before retry ${attempt + 1}`);
+            console.log(`⏳ V3 Rate limited, waiting ${backoffTime}ms before retry ${attempt + 1}`);
             await new Promise(resolve => setTimeout(resolve, backoffTime));
             continue;
           } else if (error.response?.status && error.response.status >= 500) {
@@ -321,7 +306,7 @@ export class JupiterPriceService {
             continue;
           } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
             // Network connectivity issues
-            console.warn(`Network issue on attempt ${attempt}: ${error.code}`);
+            console.warn(`Network issue on V3 attempt ${attempt}: ${error.code}`);
             if (attempt < maxRetries) {
               await new Promise(resolve => setTimeout(resolve, 1000));
               continue;
@@ -337,16 +322,23 @@ export class JupiterPriceService {
     }
 
     // All retries failed - throw error but don't fall back to mock data
-    console.error(`❌ Jupiter REAL call failed after ${maxRetries} attempts:`, lastError);
-    throw new Error(`Real Jupiter API call failed: ${lastError?.message}`);
+    console.error(`❌ Jupiter V3 REAL call failed after ${maxRetries} attempts:`, lastError);
+    throw new Error(`Real Jupiter V3 API call failed: ${lastError?.message}`);
   }
 
   /**
-   * Manually reset Oracle status (for admin/testing)
+   * Check if Oracle is down (for UI banner)
    */
-  resetOracleStatus(): void {
-    this.isOracleDown = false;
-    this.oracleDownSince = null;
+  isOracleDownStatus(): boolean {
+    return this.isOracleDown;
+  }
+
+  /**
+   * Get Oracle downtime in seconds
+   */
+  getOracleDowntime(): number {
+    if (!this.oracleDownSince) return 0;
+    return Math.floor((Date.now() - this.oracleDownSince) / 1000);
   }
 
   /**

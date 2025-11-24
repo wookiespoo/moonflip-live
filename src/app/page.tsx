@@ -5,33 +5,33 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PremiumHeader, PremiumCoinCard } from '@/components/PremiumHeader';
 import { PremiumCard } from '@/components/PremiumUI';
+import { tokenFeedService, CombinedToken } from '@/lib/tokenFeed';
 import { jupiterService } from '@/lib/jupiter';
-import { JupiterToken } from '@/lib/types';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Zap } from 'lucide-react';
 
 export default function PremiumHomePage() {
   const router = useRouter();
   const { connected } = useWallet();
-  const [memecoins, setMemecoins] = useState<JupiterToken[]>([]);
-  const [newestCoins, setNewestCoins] = useState<JupiterToken[]>([]);
+  const [trendingTokens, setTrendingTokens] = useState<CombinedToken[]>([]);
+  const [newTokens, setNewTokens] = useState<CombinedToken[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCoin, setSelectedCoin] = useState<JupiterToken | null>(null);
+  const [selectedCoin, setSelectedCoin] = useState<CombinedToken | null>(null);
   const [isOracleDown, setIsOracleDown] = useState(false);
   const [activeTab, setActiveTab] = useState<'trending' | 'new'>('trending');
 
   useEffect(() => {
-    loadMemecoins();
+    loadTokens();
     
     // Auto-refresh tokens every 3 minutes (like pump.fun)
     const interval = setInterval(() => {
       console.log('🔄 Auto-refreshing tokens...');
-      loadMemecoins();
+      loadTokens();
     }, 3 * 60 * 1000); // 3 minutes
     
     return () => clearInterval(interval);
   }, []);
 
-  const loadMemecoins = async () => {
+  const loadTokens = async () => {
     try {
       setIsLoading(true);
       
@@ -39,17 +39,22 @@ export default function PremiumHomePage() {
       const oracleDown = jupiterService.isOracleDownStatus();
       setIsOracleDown(oracleDown);
       
-      // Load trending memecoins
-      const trendingCoins = await jupiterService.getTopMemecoins(12);
-      setMemecoins(trendingCoins);
+      // Load combined trending tokens (Pump.fun + Jupiter)
+      const trending = await tokenFeedService.getCombinedTokenFeed({
+        includeNewLaunches: true,
+        includeJupiterFallback: true,
+        limit: 12,
+        sortBy: 'volume'
+      });
+      setTrendingTokens(trending);
       
-      // Load newest trending coins (like pump.fun)
-      const newCoins = await jupiterService.getNewestTrendingTokens(12);
-      setNewestCoins(newCoins);
+      // Load new tokens (Pump.fun new launches)
+      const newTokens = await tokenFeedService.getTrendingTokens(12);
+      setNewTokens(newTokens);
       
-      console.log(`✅ Loaded ${trendingCoins.length} trending coins and ${newCoins.length} newest coins`);
+      console.log(`✅ Loaded ${trending.length} trending tokens and ${newTokens.length} new tokens`);
     } catch (error) {
-      console.error('Error loading memecoins:', error);
+      console.error('Error loading tokens:', error);
       
       // Check if Oracle is down
       if (error instanceof Error && error.message.includes('Oracle down')) {
@@ -60,7 +65,7 @@ export default function PremiumHomePage() {
     }
   };
 
-  const handleCoinSelect = (coin: JupiterToken) => {
+  const handleCoinSelect = (coin: CombinedToken) => {
     setSelectedCoin(coin);
     // Always navigate to flip page, wallet connection will be handled there
     const coinData = encodeURIComponent(JSON.stringify(coin));
@@ -117,8 +122,6 @@ export default function PremiumHomePage() {
               </div>
             </div>
           )}
-
-
 
           {/* Oracle Warning */}
           {isOracleDown && (
@@ -191,22 +194,48 @@ export default function PremiumHomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeTab === 'trending' 
-                ? memecoins.map((coin) => (
-                    <PremiumCoinCard
-                      key={coin.address}
-                      coin={coin}
-                      onSelect={() => handleCoinSelect(coin)}
-                      isSelected={selectedCoin?.address === coin.address}
-                    />
+              {activeTab === 'trending'
+                ? trendingTokens.map((token) => (
+                    <div key={(token as any).address || (token as any).mintAddress} className="relative">
+                      {/* NEW LAUNCH Badge */}
+                      {token.isNewLaunch && (
+                        <div className="absolute -top-2 -right-2 z-10">
+                          <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg shadow-green-500/30 animate-pulse">
+                            <div className="flex items-center gap-1">
+                              <Zap className="h-3 w-3" />
+                              NEW LAUNCH
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <PremiumCoinCard
+                        coin={token}
+                        onSelect={() => handleCoinSelect(token)}
+                        isSelected={!!selectedCoin && ((selectedCoin as any).address === (token as any).address || (selectedCoin as any).mintAddress === (token as any).mintAddress)}
+                        ageDisplay={tokenFeedService.getTokenAgeDisplay(token)}
+                      />
+                    </div>
                   ))
-                : newestCoins.map((coin) => (
-                    <PremiumCoinCard
-                      key={coin.address}
-                      coin={coin}
-                      onSelect={() => handleCoinSelect(coin)}
-                      isSelected={selectedCoin?.address === coin.address}
-                    />
+                : newTokens.map((token) => (
+                    <div key={(token as any).address || (token as any).mintAddress} className="relative">
+                      {/* NEW LAUNCH Badge */}
+                      {token.isNewLaunch && (
+                        <div className="absolute -top-2 -right-2 z-10">
+                          <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg shadow-green-500/30 animate-pulse">
+                            <div className="flex items-center gap-1">
+                              <Zap className="h-3 w-3" />
+                              NEW LAUNCH
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <PremiumCoinCard
+                        coin={token}
+                        onSelect={() => handleCoinSelect(token)}
+                        isSelected={!!selectedCoin && ((selectedCoin as any).address === (token as any).address || (selectedCoin as any).mintAddress === (token as any).mintAddress)}
+                        ageDisplay={tokenFeedService.getTokenAgeDisplay(token)}
+                      />
+                    </div>
                   ))
               }
             </div>
@@ -217,7 +246,7 @@ export default function PremiumHomePage() {
             <div className="text-gray-500 text-sm">
               {activeTab === 'trending' ? '🔥 Trending by volume' : '✨ Newest trending coins'} • 
               <button 
-                onClick={loadMemecoins}
+                onClick={loadTokens}
                 className="text-purple-400 hover:text-purple-300 ml-1"
               >
                 Refresh
