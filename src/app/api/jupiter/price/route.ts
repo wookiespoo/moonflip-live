@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Forward request to Jupiter Price API V3 (public lite endpoint)
-    const response = await fetch(`${CONFIG.JUPITER_PRICE_API}/price/v3?ids=${ids}`, {
+    // Forward request to Jupiter Lite Price API V3 (FREE tier)
+    const response = await fetch(`https://lite-api.jup.ag/price/v3?ids=${ids}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

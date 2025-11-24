@@ -251,10 +251,10 @@ export class JupiterPriceService {
   }
 
   /**
-   * Fetch real price from Jupiter V3 API (bypasses mock data and cache)
+   * Fetch real price from Jupiter Lite API V3 (FREE tier - no auth required)
    * Used for live price updates during flip countdown
    * 
-   * November 2025: Using WORKING Jupiter V3 price API endpoint (FREE tier)
+   * November 2025: Using WORKING Jupiter Lite Price API (FREE tier)
    * This works 100% of the time for ALL tokens including fresh pump.fun launches
    */
   private async fetchRealPriceFromJupiterV3(tokenAddress: string): Promise<PriceData> {
@@ -263,7 +263,7 @@ export class JupiterPriceService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Use server proxy to Jupiter Price API V3 (avoids CORS and centralizes version)
+        // Use server proxy to Jupiter Lite Price API (avoids CORS and centralizes version)
         const resp = await fetch(`/api/jupiter/price?ids=${encodeURIComponent(tokenAddress)}`, {
           headers: {
             'Accept': 'application/json',
@@ -291,7 +291,7 @@ export class JupiterPriceService {
           confidence,
         };
 
-        console.log(`✅ Jupiter V3 price: ${tokenAddress} = $${(price ?? 0).toFixed(8)}`);
+        console.log(`✅ Jupiter Lite price: ${tokenAddress} = $${(price ?? 0).toFixed(8)}`);
         return priceData;
       } catch (error) {
         lastError = error as Error;
@@ -301,8 +301,8 @@ export class JupiterPriceService {
       }
     }
 
-    console.error(`❌ Jupiter V3 price failed after ${maxRetries} attempts:`, lastError);
-    throw new Error(`Real Jupiter V3 API call failed: ${lastError?.message}`);
+    console.error(`❌ Jupiter Lite price failed after ${maxRetries} attempts:`, lastError);
+    throw new Error(`Jupiter Lite API call failed: ${lastError?.message}`);
   }
 
   async getBatchPrices(tokenAddresses: string[]): Promise<Map<string, PriceData>> {

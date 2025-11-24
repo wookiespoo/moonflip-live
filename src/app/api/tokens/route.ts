@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    const tokens = data.tokens || data; // Handle both wrapped and direct responses
+    const tokens = Array.isArray(data) ? data : (data.tokens || data); // Handle both array and wrapped responses
     console.log(`✅ Fetched ${tokens.length} tokens from Jupiter V3 API`);
 
     // Transform Jupiter V3 format to our expected format

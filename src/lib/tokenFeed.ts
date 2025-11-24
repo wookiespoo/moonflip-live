@@ -44,6 +44,21 @@ class TokenFeedService {
         console.log(`✅ Added ${pumpFunCombined.length} Pump.fun new tokens`);
       } catch (error) {
         console.error('Failed to fetch Pump.fun tokens:', error);
+        // Fallback: Use Jupiter newest tokens as "new launches"
+        try {
+          const jupiterNewest = await jupiterService.getNewestTrendingTokens(5);
+          const jupiterCombined = await this.transformJupiterToCombined(jupiterNewest);
+          // Mark recent Jupiter tokens as new launches
+          jupiterCombined.forEach(token => {
+            if (token.ageHours && token.ageHours < 24) {
+              token.isNewLaunch = true;
+            }
+          });
+          tokens.push(...jupiterCombined);
+          console.log(`✅ Fallback: Added ${jupiterCombined.length} Jupiter newest tokens as new launches`);
+        } catch (fallbackError) {
+          console.error('Fallback Jupiter tokens also failed:', fallbackError);
+        }
       }
     }
 
@@ -83,6 +98,15 @@ class TokenFeedService {
       tokens.push(...pumpFunCombined);
     } catch (error) {
       console.error('Failed to fetch Pump.fun trending tokens:', error);
+      // Fallback: Use Jupiter trending tokens
+      try {
+        const jupiterTrending = await jupiterService.getTopMemecoins(6);
+        const jupiterCombined = await this.transformJupiterToCombined(jupiterTrending);
+        tokens.push(...jupiterCombined);
+        console.log(`✅ Fallback: Added ${jupiterCombined.length} Jupiter trending tokens`);
+      } catch (fallbackError) {
+        console.error('Fallback Jupiter trending also failed:', fallbackError);
+      }
     }
 
     try {
